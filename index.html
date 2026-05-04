@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Improv Monday</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;900&family=Permanent+Marker&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Balanced Energy background */
+  .bg-text {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    gap: 60px 80px;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    transform: rotate(-15deg) scale(1.3);
+  }
+  .bg-text span {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 90px;
+    letter-spacing: 12px;
+    color: #fff;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  /* Ambient glow */
+  .glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .glow-orb.one { width: 500px; height: 500px; background: rgba(139, 92, 246, 0.15); top: -100px; left: -100px; }
+  .glow-orb.two { width: 400px; height: 400px; background: rgba(236, 72, 153, 0.12); bottom: -50px; right: -50px; }
+  .glow-orb.three { width: 300px; height: 300px; background: rgba(59, 130, 246, 0.1); top: 50%; left: 60%; }
+
+  /* Header */
+  .header {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .header h1 {
+    font-family: 'Permanent Marker', cursive;
+    font-size: 52px;
+    background: linear-gradient(135deg, #a78bfa, #ec4899, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    letter-spacing: 2px;
+  }
+  .header .sub {
+    font-size: 14px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* Wheel area */
+  .wheel-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .wheel-wrapper {
+    position: relative;
+    width: 520px;
+    height: 520px;
+  }
+
+  /* Pointer */
+  .pointer {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-top: 40px solid #fff;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.6));
+  }
+
+  canvas#wheel {
+    width: 520px;
+    height: 520px;
+    cursor: pointer;
+    transition: filter 0.3s;
+  }
+  canvas#wheel:hover { filter: brightness(1.08); }
+
+  /* Spin button */
+  .spin-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 15;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.3);
+    background: radial-gradient(circle, #1a1a2e 0%, #0a0a0f 100%);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+    transition: all 0.3s;
+  }
+  .spin-btn:hover {
+    box-shadow: 0 0 50px rgba(139, 92, 246, 0.6);
+    border-color: rgba(167, 139, 250, 0.6);
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  .spin-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  /* Result overlay */
+  .result-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    animation: fadeIn 0.4s ease;
+  }
+  .result-overlay.active { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 40px rgba(139,92,246,0.3); } 50% { box-shadow: 0 0 80px rgba(236,72,153,0.4); } }
+
+  .result-card {
+    background: linear-gradient(145deg, rgba(30,30,50,0.95), rgba(15,15,25,0.95));
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 24px;
+    padding: 50px 60px;
+    text-align: center;
+    max-width: 580px;
+    width: 90%;
+    animation: slideUp 0.5s ease 0.2s both, pulseGlow 3s ease infinite;
+  }
+  .result-card .label {
+    font-size: 13px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 16px;
+  }
+  .result-card .topic-name {
+    font-family: 'Permanent Marker', cursive;
+    font-size: 42px;
+    background: linear-gradient(135deg, #a78bfa, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 24px;
+    line-height: 1.2;
+  }
+  .result-card .scenario {
+    font-size: 16px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.8;
+    margin-bottom: 36px;
+    min-height: 60px;
+    text-align: left;
+    white-space: pre-line;
+  }
+  .result-card .actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+  }
+  .result-card button {
+    padding: 14px 32px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .btn-spin-again {
+    background: linear-gradient(135deg, #7c3aed, #db2777);
+    border: none;
+    color: #fff;
+  }
+  .btn-spin-again:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,58,237,0.4); }
+  .btn-close {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.6);
+  }
+  .btn-close:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+
+  /* Tick sound visual indicator */
+  .wheel-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 96%;
+    height: 96%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.06);
+    pointer-events: none;
+  }
+
+  /* Controls */
+  .controls {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 28px;
+  }
+  .counter {
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 2px;
+    font-weight: 600;
+  }
+  .reset-btn {
+    padding: 10px 28px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.6);
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .reset-btn:hover {
+    border-color: rgba(236,72,153,0.6);
+    color: #ec4899;
+    box-shadow: 0 0 20px rgba(236,72,153,0.2);
+  }
+
+  /* Footer */
+  .footer {
+    position: fixed;
+    bottom: 20px;
+    z-index: 10;
+    font-size: 12px;
+    color: rgba(255,255,255,0.15);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<!-- Balanced Energy background pattern -->
+<div class="bg-text" aria-hidden="true">
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+  <span>Balanced Energy</span><span>Balanced Energy</span><span>Balanced Energy</span>
+</div>
+
+<!-- Ambient glows -->
+<div class="glow-orb one"></div>
+<div class="glow-orb two"></div>
+<div class="glow-orb three"></div>
+
+<!-- Header -->
+<div class="header">
+  <h1>Improv Monday</h1>
+  <div class="sub">Spin &bull; Act &bull; Entertain</div>
+</div>
+
+<!-- Wheel -->
+<div class="wheel-container">
+  <div class="wheel-wrapper">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="1040" height="1040"></canvas>
+    <button class="spin-btn" id="spinBtn" onclick="spinWheel()">SPIN</button>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <span class="counter" id="counterText">10 / 10 remaining</span>
+  <button class="reset-btn" onclick="resetWheel()">RESET</button>
+</div>
+
+<!-- Result overlay -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card">
+    <div class="label">Tonight's Topic</div>
+    <div class="topic-name" id="resultTopic">—</div>
+    <div class="scenario" id="resultScenario">—</div>
+    <div class="actions">
+      <button class="btn-spin-again" onclick="closeAndSpin()">Spin Again</button>
+      <button class="btn-close" onclick="closeResult()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Balanced Energy</div>
+
+<script>
+// ============================================================
+//  TOPICS & SCENARIOS — Edit this array to customize the wheel
+// ============================================================
+const SEGMENTS = [
+  {
+    topic: "Group Chat Intervention",
+    scenario: `Character 1 (Accuser): Calm but disappointed, reading messages out loud like evidence\nCharacter 2 (Defender): The one who sent the messages, doubling down like it all made sense\nCharacter 3 (Instigator): Pretends to help but keeps adding details that make it worse`
+  },
+  {
+    topic: "Barbershop Philosophers",
+    scenario: `Character 1 (Expert): Talks like they studied the topic for years\nCharacter 2 (Skeptic): Questions everything and challenges every point\nCharacter 3 (Loud Wrong One): Confident… but completely incorrect`
+  },
+  {
+    topic: "Toxic Relationship Court",
+    scenario: `Character 1 (Plaintiff): Explaining why they're right\nCharacter 2 (Defendant): Interrupting, denying, flipping the story\nCharacter 3 (Judge): Biased, dramatic, and enjoying the power too much`
+  },
+  {
+    topic: "Family Reunion Roast",
+    scenario: `Character 1 (Low-Key Roaster): Throws subtle jabs disguised as compliments\nCharacter 2 (Sensitive One): Takes everything personal\nCharacter 3 (Historian): Brings up old stories nobody wanted mentioned`
+  },
+  {
+    topic: "Broke Millionaires Pitch",
+    scenario: `Character 1 (Visionary): Big ideas, zero details\nCharacter 2 (Fake Investor): Asking questions they don't understand either\nCharacter 3 (Hype Man): Overreacts to everything like it's genius`
+  },
+  {
+    topic: "First Date Gone Wrong",
+    scenario: `Character 1 (Trying Too Hard): Over-impressing, exaggerating their life\nCharacter 2 (Suspicious Date): Not buying anything being said\nCharacter 3 (Messy Waiter): Keeps exposing truths mid-conversation`
+  },
+  {
+    topic: "Hood Time Travelers",
+    scenario: `Character 1 (Confident Translator): Explaining modern slang incorrectly\nCharacter 2 (Confused Local): Trying to understand but getting frustrated\nCharacter 3 (Chaos Agent): Fully embracing the confusion and making it worse`
+  },
+  {
+    topic: "Roommate War Meeting",
+    scenario: `Character 1 (Organizer): Trying to keep things on topic\nCharacter 2 (Deflector): Avoiding blame and switching subjects\nCharacter 3 (Grudge Holder): Bringing up OLD issues`
+  },
+  {
+    topic: "Terrible Podcast Episode",
+    scenario: `Character 1 (Host): Trying to sound professional\nCharacter 2 (Know-It-All Guest): Talks too much, says nothing\nCharacter 3 (Disruptor): Interrupts with wild takes`
+  },
+  {
+    topic: "Fake Motivational Speakers",
+    scenario: `Character 1 (Guru): Speaks in deep-sounding nonsense\nCharacter 2 (Questioner): Asking real questions that expose flaws\nCharacter 3 (Blind Follower): Agrees with everything no matter what`
+  },
+];
+
+// Colors for wheel segments
+const COLORS = [
+  "#7c3aed", "#db2777", "#2563eb", "#d97706",
+  "#059669", "#e11d48", "#6366f1", "#ea580c",
+  "#0891b2", "#65a30d",
+];
+
+// Track which segments have been used
+let usedSegments = new Set();
+
+// ============================================================
+//  Wheel rendering
+// ============================================================
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+const size = canvas.width;
+const center = size / 2;
+const radius = center - 10;
+const segCount = SEGMENTS.length;
+const arc = (2 * Math.PI) / segCount;
+
+let currentAngle = 0;
+let spinning = false;
+
+function drawWheel(angle) {
+  ctx.clearRect(0, 0, size, size);
+
+  // Outer ring glow
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(center, center, radius + 6, 0, 2 * Math.PI);
+  ctx.strokeStyle = "rgba(167,139,250,0.2)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+
+  for (let i = 0; i < segCount; i++) {
+    const startAngle = angle + i * arc;
+    const endAngle = startAngle + arc;
+    const isUsed = usedSegments.has(i);
+
+    // Segment fill
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.arc(center, center, radius, startAngle, endAngle);
+    ctx.closePath();
+
+    if (isUsed) {
+      // Blacked out segment
+      ctx.fillStyle = "#1a1a1a";
+    } else {
+      const grad = ctx.createRadialGradient(center, center, 40, center, center, radius);
+      grad.addColorStop(0, shadeColor(COLORS[i % COLORS.length], 30));
+      grad.addColorStop(1, COLORS[i % COLORS.length]);
+      ctx.fillStyle = grad;
+    }
+    ctx.fill();
+
+    // Segment border
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Text
+    ctx.save();
+    ctx.translate(center, center);
+    ctx.rotate(startAngle + arc / 2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = isUsed ? "rgba(255,255,255,0.15)" : "#fff";
+    ctx.font = "900 26px 'Inter', sans-serif";
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = isUsed ? 0 : 4;
+    ctx.fillText(SEGMENTS[i].topic, radius - 24, 8);
+    ctx.restore();
+
+    // X mark on used segments
+    if (isUsed) {
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(startAngle + arc / 2);
+      ctx.strokeStyle = "rgba(255,50,50,0.4)";
+      ctx.lineWidth = 3;
+      const mid = radius * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(mid - 15, -12);
+      ctx.lineTo(mid + 15, 12);
+      ctx.moveTo(mid + 15, -12);
+      ctx.lineTo(mid - 15, 12);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(center, center, 54, 0, 2 * Math.PI);
+  ctx.fillStyle = "#0a0a0f";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.15)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function shadeColor(color, percent) {
+  const num = parseInt(color.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.min(255, (num >> 16) + amt);
+  const G = Math.min(255, ((num >> 8) & 0x00ff) + amt);
+  const B = Math.min(255, (num & 0x0000ff) + amt);
+  return `rgb(${R},${G},${B})`;
+}
+
+// ============================================================
+//  Audio — tick sound via Web Audio API
+// ============================================================
+let audioCtx;
+function playTick() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value = 1800;
+  osc.type = "sine";
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.05);
+}
+
+function playWin() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  [523, 659, 784].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime + i * 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.12 + 0.3);
+    osc.start(audioCtx.currentTime + i * 0.12);
+    osc.stop(audioCtx.currentTime + i * 0.12 + 0.3);
+  });
+}
+
+// ============================================================
+//  Spin logic
+// ============================================================
+function getAvailableSegments() {
+  const available = [];
+  for (let i = 0; i < segCount; i++) {
+    if (!usedSegments.has(i)) available.push(i);
+  }
+  return available;
+}
+
+function spinWheel() {
+  if (spinning) return;
+
+  const available = getAvailableSegments();
+  if (available.length === 0) {
+    alert("All topics have been played! Hit RESET to start over.");
+    return;
+  }
+
+  spinning = true;
+  document.getElementById("spinBtn").disabled = true;
+
+  // Pick a random available segment to land on
+  const targetIndex = available[Math.floor(Math.random() * available.length)];
+
+  // Calculate the angle needed to land on that segment
+  // Pointer is at top (-π/2 in canvas). We want the middle of the target segment under it.
+  const targetMidAngle = targetIndex * arc + arc / 2;
+  // The pointer reads at angle: (2π - currentAngle % 2π + π/2) % 2π mapped to segment
+  // We need: adjusted = targetMidAngle, so finalPointer + π/2 = targetMidAngle
+  // finalPointer = (2π - endAngle%2π + 2π)%2π
+  // Solve for endAngle to land on target
+  const desiredPointer = (targetMidAngle - Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI);
+  const desiredEndMod = (2 * Math.PI - desiredPointer + 2 * Math.PI) % (2 * Math.PI);
+
+  // Add full rotations + the precise landing angle
+  const fullRotations = (5 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
+  const currentMod = ((currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  let diff = desiredEndMod - currentMod;
+  if (diff <= 0) diff += 2 * Math.PI;
+
+  const totalRad = fullRotations + diff;
+  const startAngle = currentAngle;
+  const duration = 5000 + Math.random() * 2000;
+  const startTime = performance.now();
+
+  let lastSegIndex = -1;
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+
+    // Easing — cubic out for natural deceleration
+    const ease = 1 - Math.pow(1 - t, 3);
+    currentAngle = startAngle + totalRad * ease;
+
+    drawWheel(currentAngle);
+
+    // Tick sound when crossing segment boundary
+    const pointerAngle = (2 * Math.PI - (currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    const segIndex = Math.floor(pointerAngle / arc) % segCount;
+    if (segIndex !== lastSegIndex) {
+      playTick();
+      lastSegIndex = segIndex;
+    }
+
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      spinning = false;
+      document.getElementById("spinBtn").disabled = false;
+      playWin();
+      showResult(targetIndex);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function resetWheel() {
+  usedSegments.clear();
+  drawWheel(currentAngle);
+  updateCounter();
+}
+
+// ============================================================
+//  Result display
+// ============================================================
+function showResult(index) {
+  // Mark segment as used
+  usedSegments.add(index);
+  drawWheel(currentAngle);
+  updateCounter();
+
+  const seg = SEGMENTS[index];
+  document.getElementById("resultTopic").textContent = seg.topic;
+  document.getElementById("resultScenario").textContent = seg.scenario;
+  document.getElementById("resultOverlay").classList.add("active");
+}
+
+function updateCounter() {
+  const remaining = segCount - usedSegments.size;
+  document.getElementById("counterText").textContent = `${remaining} / ${segCount} remaining`;
+}
+
+function closeResult() {
+  document.getElementById("resultOverlay").classList.remove("active");
+}
+
+function closeAndSpin() {
+  closeResult();
+  setTimeout(() => spinWheel(), 400);
+}
+
+// Initial draw
+drawWheel(currentAngle);
+</script>
+</body>
+</html>
